@@ -147,6 +147,11 @@ def build_parser():
     parser.add_argument(
         "--use-dora", action="store_true", default=None, help="Use DoRA to finetune."
     )
+    parser.add_argument(
+        "--seq-classification",
+        default=None,
+        help="Finetune a sequence classification model",
+    )
     return parser
 
 
@@ -177,6 +182,14 @@ def run(args, training_callback: TrainingCallback = None):
 
     # Freeze all layers
     model.freeze()
+
+    if args.seq_classification:
+        # Replace last linear layer with classification head if training sequence classification model
+        model.out_head = nn.Linear(model.out_head.weight.shape[-1], 2)
+
+        # Unfreeze transformer blocks & last layer norm
+        model.trf_blocks.layers[-1].unfreeze()
+        model.final_form.unfreeze()
 
     adapter_path = Path(args.adapter_path)
     adapter_file = adapter_path / "adapters.safetensors"
